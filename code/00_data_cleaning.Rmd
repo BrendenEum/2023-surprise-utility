@@ -1,0 +1,378 @@
+---
+title: "SU: Data Cleaning"
+author: Brenden Eum
+date: February 7, 2023
+output: 
+  html_document: 
+    theme: united
+    toc: yes
+    toc_float: yes
+    toc_depth: 2
+    number_sections: yes
+    code_folding: hide
+    df_print: default
+---
+
+# Preamble
+
+Start fresh, set seed, load libraries, set directories.
+
+```{r load, message=FALSE, warning=FALSE}
+
+rm(list = ls())
+seed = 1337
+library(dplyr)      #pipeline %>%
+
+datadir <- '../data' #data
+figdir <- '../00_pilot/figures' #figures
+outdir <- '../00_pilot/output' #output
+tempdir <- '../00_pilot/temp' #temp folder
+
+```
+
+
+# Load Data
+
+* Read the csv file with all the subject data. 
+* Make a list of variables that you're interested in, and only keep those in the main data set.
+* Only keep subjects that completed the task.
+
+```{r}
+
+variables_of_interest <- c(
+  "Participant.Private.ID", #   Unidentifiable subject ID number
+  "display", #                  Display name from Gorilla
+  "Screen.Name", #              Screen name from Gorilla
+  "task", #                     Which task is this trial a part of? (1, 2, 3)
+  "block", #                    If it's task 1 (T1), then high or low probability block (H, L).
+  "Response", #                 Subject's response
+  "Reaction.Time", #            Reaction time in ms
+  "Correct", #                  Did subject's response match the correct answer (1=Y, 0=N)
+  "correctResponse", #          What was the correct response on this trial? (left or right)
+  "pie", #                      What pie graph was shown on the T1 info screen?
+  "reward", #                   Was this T1 trial rewarded? (1=Y, 0=N)
+  "fractalInfo", #              What fractal was displayed on the T1 info screen?
+  "fractalOut", #               What fractal was displayed on the T1 outcome screen?
+  "leftInfo", #                 What was displayed on the left side of the T1 info screen?
+  "rightInfo", #                What was displayed on the right side of the T1 info screen?
+  "leftOut", #                  What was displayed on the left side of the T1 outcome screen?
+  "rightOut", #                 What was displayed on the right side of the T1 outcome screen?
+  "Response.Type", #            This column & "Response" were to store the mapping: trial condition -> fractal. See bottom of each subject's data.
+  "leftFractal", #              What fractal was displayed on the left side of the T2 choice screen?
+  "rightFractal", #             What fractal was displayed on the right side of the T2 choice screen?
+  "imgSet" #                    What image was shown during the T3 rating screen?
+)
+
+data.raw <- read.csv(
+  file = file.path(datadir, "pilotdata_exp_106287-v23_task-s39a.csv")
+)
+
+data.main <- data.raw[data.raw$Participant.Status=="complete", variables_of_interest]
+
+```
+
+
+# data.main Cleaning
+
+* Rename columns.
+* Factorize.
+* Drop NA.
+
+```{r}
+
+# Rename certain columns.
+
+data.main <- data.main %>%
+  rename(
+    subject = "Participant.Private.ID",
+    screen = "Screen.Name",         
+    response = "Response",             
+    rt = "Reaction.Time",        
+    correct = "Correct",            
+    correctResponse = "correctResponse",
+    T1.pie = "pie",
+    T1.reward = "reward",
+    T1.fractalInfo = "fractalInfo",
+    T1.fractalOut = "fractalOut",
+    T1.leftInfo = "leftInfo",
+    T1.rightInfo = "rightInfo",
+    T1.leftOut = "leftOut",
+    T1.rightOut = "rightOut",
+    mapping = "Response.Type",
+    T2.leftFractal = "leftFractal",
+    T2.rightFractal = "rightFractal",
+    T3.img = "imgSet"
+  )
+
+# Factorize subject number.
+
+data.main$subject <- data.main$subject %>%
+  factor() %>%
+  as.numeric() %>%
+  factor()
+
+```
+
+
+# data.main Quality Filter
+
+* Drop if...
+  * <90% accuracy in T1.
+  * Dropped Subject 9 bc their accuracy was 77%.
+  
+```{r}
+
+# Drop if <70% accuracy in T1.
+
+data.main <- data.main %>%
+  group_by(subject, task, display, screen) %>%
+  mutate(
+    prepre_keep = as.numeric(sum(correct)>=(.9*n())), # We want to calculate keep for T1Trial Outcome screens.
+    pre_keep = 0
+  )
+data.main[data.main$display=="T1Trial" & data.main$screen=="Outcome", "pre_keep"] <- 
+  data.main[data.main$display=="T1Trial" & data.main$screen=="Outcome", "prepre_keep"]
+data.main <- data.main %>%
+  group_by(subject) %>%
+  mutate(
+    keep = max(pre_keep)
+  )
+dropped_subjects <- unique(data.main[data.main$keep==0, "subject"])
+data.main <- data.main[data.main$keep==1,]
+data.main <- select(data.main, -c("prepre_keep", "pre_keep", "keep"))
+
+```
+
+
+# data.main Fractal Nomenclature
+
+* Examples of fractal nomenclature: fr1p13 means F(R, P=1/3). fr0p0 means F(nR, P=0). fp13H means F(P=1/3, H).
+* For T2, make the chosen fractal.
+
+```{r}
+
+# Generate a dataframe that maps from fractal to fractal nomenclature for every subject.
+
+mapping <- data.main[!data.main$mapping %in% c("", "Bonus Trial", "Bonus Correct", "Bonus Response"), ]
+mapping <- mapping[ , c("subject","response","mapping")] %>%
+  rename(
+    fractal = 'response',
+    map = "mapping"
+  )
+mapping[mapping$map=="Hpie1", 'map'] <- "fp1H"
+mapping[mapping$map=="Hpie13", 'map'] <- "fp13H"
+mapping[mapping$map=="Lpie13", 'map'] <- "fp13L"
+mapping[mapping$map=="rewardpie1", 'map'] <- "fr1p1"
+mapping[mapping$map=="norewardpie0", 'map'] <- "fr0p0"
+mapping[mapping$map=="rewardpie13", 'map'] <- "fr1p13"
+mapping[mapping$map=="norewardpie13", 'map'] <- "fr0p13"
+
+
+# For every row, use the fractal mapping to relabel the T2 left fractal and right fractal.
+
+for (row in c(1:nrow(data.main))) {
+  
+  currentRow <- data.main[row,]
+  
+  if (currentRow$display == "T2Trial" & currentRow$screen == "Choice") {
+    
+    currentSubject <- currentRow$subject
+    currentLeftFractal  <- currentRow$T2.leftFractal
+    currentRightFractal <- currentRow$T2.rightFractal
+
+    data.main[row, "T2.leftFractal"]  <- mapping[mapping$subject==currentSubject & mapping$fractal==currentLeftFractal, "map"]
+    data.main[row, "T2.rightFractal"] <- mapping[mapping$subject==currentSubject & mapping$fractal==currentRightFractal, "map"]
+    
+  }
+}
+
+```
+
+
+# Save data.main
+
+* Write data.main to a csv.
+
+```{r}
+
+write.csv(
+  data.main, 
+  file.path(outdir, "data.main.csv")
+)
+
+```
+
+
+# Split data.main Task-wise
+
+```{r}
+
+data.T1 <- data.main[data.main$task==1, ]
+data.T2 <- data.main[data.main$task==2, ]
+data.T3 <- data.main[data.main$task==3, ]
+
+```
+
+
+# data.T1 Cleaning
+
+* Drop NA.
+* Trial numbers.
+* Write data.T1 to a csv.
+
+```{r}
+
+# Only keep relevant columns.
+
+variables_of_interest <- c(
+  "subject",
+  "task",
+  "block",
+  "display",
+  "screen",
+  "rt",
+  "response",
+  "correct",
+  "correctResponse",
+  "T1.pie",
+  "T1.reward",
+  "T1.fractalInfo",
+  "T1.fractalOut"
+)
+data.T1 <- data.T1[,variables_of_interest]
+
+# Drop NA.
+
+data.T1 <- data.T1 %>% na.omit()
+
+# The Outcome screen records all trial related information, so we only need to keep those observations.
+
+display.name <- "T1Trial"
+screen.name <- "Outcome"
+data.T1 <- data.T1[ data.T1$display == display.name & data.T1$screen == screen.name , ]
+
+# Add a trial number.
+
+data.T1 <- data.T1 %>%
+  group_by(subject) %>%
+  mutate(
+    trial = row_number()
+  )
+
+# Write to csv.
+
+write.csv(
+  data.T1, 
+  file.path(outdir, "data.T1.csv")
+)
+
+```
+
+
+# data.T2 Cleaning
+
+* Write data.T2 to a csv.
+
+```{r}
+
+# Only keep relevant columns.
+
+variables_of_interest <- c(
+  "subject",
+  "task",
+  "display",
+  "screen",
+  "rt",
+  "response",
+  "T2.leftFractal",
+  "T2.rightFractal"
+)
+data.T2 <- data.T2[,variables_of_interest]
+
+# Drop NA.
+
+data.T2 <- data.T2 %>% na.omit()
+
+# The Choice screen records all trial related information, so we only need to keep those observations.
+
+display.name <- "T2Trial"
+screen.name <- "Choice"
+data.T2 <- data.T2[ data.T2$display == display.name & data.T2$screen == screen.name , ]
+
+# Add a trial number.
+
+data.T2 <- data.T2 %>%
+  group_by(subject) %>%
+  mutate(
+    trial = row_number()
+  )
+
+# Make a variable for the chosen fractal.
+
+data.T2$T2.chosenFractal <- ""
+data.T2[data.T2$response=="left", "T2.chosenFractal"] <- data.T2[data.T2$response=="left", "T2.leftFractal"]
+data.T2[data.T2$response=="right", "T2.chosenFractal"] <- data.T2[data.T2$response=="right", "T2.rightFractal"]
+
+# Write to csv.
+
+write.csv(
+  data.T2, 
+  file.path(outdir, "data.T2.csv")
+)
+
+```
+
+
+# data.T3 Cleaning
+
+* Write data.T3 to a csv.
+
+```{r}
+
+# Only keep relevant columns.
+
+variables_of_interest <- c(
+  "subject",
+  "task",
+  "display",
+  "screen",
+  "rt",
+  "response",
+  "T3.img"
+)
+data.T3 <- data.T3[,variables_of_interest]
+
+# Drop NA.
+
+data.T3 <- data.T3 %>% na.omit()
+
+# The Choice screen records all trial related information, so we only need to keep those observations.
+
+display.name <- "T3Trial"
+screen.name <- "Rating Screen"
+data.T3 <- data.T3[ data.T3$display == display.name & data.T3$screen == screen.name , ]
+
+# Make response a numerical variable.
+data.T3[data.T3$response=="3 (a lot)", "response"] <- toString(3)
+data.T3[data.T3$response=="2 (ok)", "response"] <- toString(2)
+data.T3[data.T3$response=="1 (little)", "response"] <- toString(1)
+data.T3[data.T3$response=="0 (neutral)", "response"] <- toString(0)
+data.T3[data.T3$response=="-1 (dislike)", "response"] <- toString(-1)
+data.T3$response <- data.T3$response %>% as.integer()
+
+# Add a trial number.
+
+data.T3 <- data.T3 %>%
+  group_by(subject) %>%
+  mutate(
+    trial = row_number()
+  )
+
+# Write to csv.
+
+write.csv(
+  data.T3, 
+  file.path(outdir, "data.T3.csv")
+)
+
+```

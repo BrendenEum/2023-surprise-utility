@@ -1,0 +1,280 @@
+---
+title: "CARD Ipsos Figures"
+output: html_notebook
+---
+
+# Header
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+
+codedir <- getwd()
+figdir <- file.path(codedir, "../figures/card ipsos/")
+
+margin <- 1
+
+```
+
+# Fig: predictions
+
+```{r}
+
+##################################################################
+## Experienced utility independent of surprise
+
+pre_x <- c('2/3', '1/3', '0', '1', ' 2/3 ', ' 1/3 ')
+x   <- factor(pre_x, levels=pre_x)
+y   <- c(.5, .5, .5, 1, 1, 1)
+names <- c('No Reward', 'Reward')
+grp <- factor(y, labels=names)
+
+pdata <- data.frame(x, y, grp)
+
+p1 <- ggplot(data=pdata, aes(x=x, y=y, fill=grp)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=.5, alpha=.15) +
+  ylab("Expected Neural Signal") +
+  xlab("Pr(Reward)") +
+  scale_fill_manual(values=c("grey15", "lightblue")) +
+  scale_y_continuous(breaks=unique(y), labels=c('0','1')) +
+  theme_classic()  +
+  theme(legend.title = element_blank(),
+        legend.position='none',
+        legend.background = element_blank(),
+        plot.margin = margin(margin,margin,margin,margin, "cm"))
+
+
+##################################################################
+## Experienced utility modulated by surprise
+
+pre_x <- c('2/3', '1/3', '0', '1', ' 2/3 ', ' 1/3 ')
+x   <- factor(pre_x, levels=pre_x)
+y   <- c(1/6, 2/6, 3/6, 4/6, 5/6, 6/6)
+names <- c('No Reward', 'Reward')
+grp <- factor(c(.5, .5, .5, 1, 1, 1), labels=names)
+
+pdata <- data.frame(x, y, grp)
+
+p2 <- ggplot(data=pdata, aes(x=x, y=y, fill=grp)) +
+  geom_bar(stat="identity") +
+  geom_hline(yintercept=.5, alpha=.15) +
+  ylab("Expected Neural Signal") +
+  xlab("Pr(Reward)") +
+  scale_fill_manual(values=c("grey15", "lightblue")) +
+  scale_y_continuous(breaks=y, labels=c('-2/3', '-1/3', '0', '1/3', '2/3', '1')) +
+  theme_classic() +
+  theme(legend.title = element_blank(),
+        legend.position=c(.33,.9),
+        plot.margin = margin(margin,margin,margin,margin, "cm"))
+
+
+##################################################################
+## Combine
+
+final <- ggarrange(p1, p2,
+                   labels = c("A", "B"),
+                   ncol = 2)
+
+ggsave(file.path(figdir,"predictionsOFC.pdf"), final, width=6, height=3, units='in')
+```
+
+# Fig: anticipation
+
+surprise @ info screen
+
+```{r}
+
+x <- c(0, 1/3, 2/3, 1, 0, 1/3, 2/3, 1)
+y  <- c(NA, -1/3, 0, 1/3, -1/3, 0, 1/3, NA)
+names <- c('H', 'L')
+Context <- factor(c(1,1,1,1,2,2,2,2), labels=names)
+
+pdata <- data.frame(x, y, Context)
+
+p3 <- ggplot(data=pdata, aes(x=x, y=y, color=Context)) +
+  
+  geom_hline(yintercept=0, color = "grey", alpha=.75) +
+  geom_line(size = 2) +
+  
+  ylab("Surprise Utility Signal") +
+  xlab("Pr(Reward)") +
+  scale_color_manual(values=c("darkblue", "darkorange")) +
+  scale_x_continuous(breaks=c(0, 1/3, 2/3, 1), labels=c('0', '1/3', '2/3', '1')) +
+  scale_y_continuous(breaks=c(-1/3, 0, 1/3, 2/3, 1), labels=c('-1/3', '0', '1/3', '2/3', '1'), limits = c(-1/3, 1)) +
+  theme_classic() +
+  theme(legend.position=c(.2,.85),
+        plot.margin = margin(margin,margin,margin,margin, "cm"))
+
+plot(p3)
+
+```
+
+anticipation @ info screen
+
+```{r}
+
+x <- c(0, 1/3, 2/3, 1)
+y  <- c(0, .203, .406, .609) # see simulated anticipation below
+
+pdata <- data.frame(x, y)
+
+p4 <- ggplot(data=pdata, aes(x=x, y=y)) +
+  
+  geom_hline(yintercept=0, color = "grey", alpha=.75) +
+  geom_line(size = 2, color = 'darkgreen') +
+  
+  ylab("Anticipation Utility Signal") +
+  xlab("Pr(Reward)") +
+  scale_x_continuous(breaks=c(0, 1/3, 2/3, 1), labels=c('0', '1/3', '2/3', '1')) +
+  scale_y_continuous(breaks=c(-1/3, 0, 1/3, 2/3, 1), labels=c('-1/3', '0', '1/3', '2/3', '1'), limits = c(-1/3, 1)) +
+  theme_classic() +
+  theme(legend.position=c(.1,.85),
+        plot.margin = margin(margin,margin,margin,margin, "cm"))
+
+plot(p4)
+
+```
+
+surprise at info and outcome
+
+```{r}
+
+x <- c(1,1,1,40,40,40,40,40,40)
+y  <- c(1/3, 0, -1/3, 1+2/3, 1+1/3, 1, 0, -1/3, -2/3)
+
+pdata <- data.frame(x, y)
+
+p1 <- ggplot(data=pdata, aes(x=x, y=y)) +
+  
+  geom_vline(xintercept=1, color = "grey", alpha = .9, linetype = "dashed") +
+  geom_vline(xintercept=40, color = "grey", alpha = .9, linetype = "dashed") +
+  geom_hline(yintercept=0, color="grey", alpha=.9) +
+  
+  geom_point(size = 2) +
+  
+  ylab("Surprise Utility Signal") +
+  xlab("Time") +
+  theme_classic() +
+  ylim(c(-1,3)) +
+  scale_x_continuous(
+    breaks = c(1,40), 
+    labels=c("Information Screen", "Outcome Screen")
+  ) +
+  theme(legend.position=c(.8,.7),
+        legend.background = element_blank(),
+        plot.margin = margin(margin,margin,margin,margin, "cm"))
+
+plot(p1)
+
+```
+
+anticipation during wait
+
+```{r}
+
+x <- seq(from=1,to=40,length.out=40)
+
+delta <- .9
+anticipationRate <- .01
+
+gen_y <- function(x, delta, probability, anticipationRate) {
+  discount <- delta^x
+  anticipation <- cumsum(
+    probability * exp(-anticipationRate*(max(x)-x))
+  )
+  y <- discount*anticipation  
+  return(y)
+}
+
+pdata1 <- data.frame(
+  x = x, 
+  y = gen_y(x, delta, 1, anticipationRate),
+  p = 1
+)
+pdata23 <- data.frame(
+  x = x, 
+  y = gen_y(x, delta, 2/3, anticipationRate),
+  p = 2/3
+)
+pdata13 <- data.frame(
+  x = x, 
+  y = gen_y(x, delta, 1/3, anticipationRate),
+  p = 1/3
+)
+pdata0 <- data.frame(
+  x = x, 
+  y = gen_y(x, delta, 0.00001, anticipationRate),
+  p = 0
+)
+
+pdata <- bind_rows(pdata1, pdata23, pdata13, pdata0)
+pdata$p <- factor(
+  pdata$p,
+  levels = c(1, 2/3, 1/3, 0),
+  labels = c("1", "2/3", "1/3", "0")
+)
+
+
+p2 <- ggplot(data=pdata, aes(x=x, y=y, color=p)) +
+  
+  geom_vline(xintercept=1, color = "grey", alpha = .9, linetype = "dashed") +
+  geom_vline(xintercept=40, color = "grey", alpha = .9, linetype = "dashed") +
+  geom_hline(yintercept=0, color="grey", alpha=.9) +
+  
+  geom_line(size = 2) +
+  
+  ylab("Anticipation Utility Signal") +
+  xlab("Time") +
+  theme_classic() +
+  ylim(c(-1,3)) +
+  scale_x_continuous(
+    breaks = c(1,40), 
+    labels=c("Information Screen", "Outcome Screen")
+  ) +
+  guides(color = guide_legend(override.aes = list(size = 0.75))) +
+  theme(legend.position=c(.85,.77),
+        legend.background = element_blank(),
+        legend.title = element_text(size=8),
+        legend.text=element_text(size=8),
+        plot.margin = margin(margin,margin,margin,margin, "cm"))
+
+plot(p2)
+
+```
+
+
+combine
+
+```{r}
+
+final1 <- ggarrange(
+  p1, p2,
+  labels = c("A", "B"),
+  ncol = 2
+)
+final2 <- ggarrange(
+  p3, p4,
+  labels = c("C", "D"),
+  ncol = 2
+)
+
+final <- ggarrange(
+  final1, final2,
+  nrow = 2
+)
+
+plot(final)
+
+ggsave(
+  file.path(figdir,"fig_surpriseVsAnticipation.pdf"), 
+  final, 
+  width=7, 
+  height=6, 
+  units='in'
+)
+
+```
+
