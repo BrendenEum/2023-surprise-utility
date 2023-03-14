@@ -25,16 +25,17 @@ library(ggplot2) #plots... duh
 library(grid) #combine plots
 library(gridExtra) #more combining plots
 library(ggsci) #I like the Futurama color palette <3
-library(brms) #hierarchical regressions
-library(runjags) #MCMC
-library(effsize) #cohen's big fat d
 library(latex2exp) #for fancy math stuffs in the plots
-library(ggpubr) #column titles for grid.arrange plots
 
-datadir <- '../data' #data
-figdir <- '../00_pilot/figures' #figures
-outdir <- '../00_pilot/output' #output
-tempdir <- '../00_pilot/temp' #temp folder
+rawdatadir <- '../data' # raw data
+datadir <- '../00 pilot/clean_data' # clean data
+figdir <- '../00 pilot/figures' # figure folder
+tbldir <- '../00 pilot/tables' # figure folder
+tempdir <- '../00 pilot/temp' # temp folder
+textdir <- "../00 pilot/text" # text folder
+final.figdir <- "../surprise-utility-manuscript/figures"
+final.txtdir <- "../surprise-utility-manuscript/text-files"
+final.tbldir <- "../surprise-utility-manuscript/tables"
 
 ```
 
@@ -93,9 +94,9 @@ ggplot <- function(...) ggplot2::ggplot(...) +
 
 ```{r}
 
-data.T1 <- read.csv(file.path(outdir, "data.T1.csv"))
-data.T2 <- read.csv(file.path(outdir, "data.T2.csv"))
-data.T3 <- read.csv(file.path(outdir, "data.T3.csv"))
+data.T1 <- read.csv(file.path(datadir, "data.T1.csv"))
+data.T2 <- read.csv(file.path(datadir, "data.T2.csv"))
+data.T3 <- read.csv(file.path(datadir, "data.T3.csv"))
 
 ```
 
@@ -147,6 +148,10 @@ ggsave(
   file.path(figdir, "p.T1.responseAccuracy.pdf"),
   plot = p.T1.responseAccuracy
 )
+ggsave(
+  file.path(final.figdir, "p.T1.responseAccuracy.pdf"),
+  plot = p.T1.responseAccuracy
+)
 
 #--------------------------------------------------------------------------------
 # Response time.
@@ -182,6 +187,10 @@ plot(p.T1.responseTime)
 
 ggsave(
   file.path(figdir, "p.T1.responseTime.pdf"),
+  plot = p.T1.responseTime
+)
+ggsave(
+  file.path(final.figdir, "p.T1.responseTime.pdf"),
   plot = p.T1.responseTime
 )
 
@@ -221,6 +230,10 @@ plot(p.T1.responseTimeByCorrect)
 
 ggsave(
   file.path(figdir, "p.T1.responseTimeByCorrect.pdf"),
+  plot = p.T1.responseTimeByCorrect
+)
+ggsave(
+  file.path(final.figdir, "p.T1.responseTimeByCorrect.pdf"),
   plot = p.T1.responseTimeByCorrect
 )
 
@@ -263,6 +276,10 @@ plot(p.T2.nonmissingData)
 
 ggsave(
   file.path(figdir, "p.T2.nonmissingData.pdf"),
+  plot = p.T2.nonmissingData
+)
+ggsave(
+  file.path(final.figdir, "p.T2.nonmissingData.pdf"),
   plot = p.T2.nonmissingData
 )
 
@@ -441,6 +458,10 @@ ggsave(
   file.path(figdir, "p.T2.modelPredictions.pdf"),
   plot = p.T2.modelPredictions
 )
+ggsave(
+  file.path(final.figdir, "p.T2.modelPredictions.pdf"),
+  plot = p.T2.modelPredictions
+)
 
 ```
 
@@ -478,6 +499,10 @@ ggsave(
   file.path(figdir, "p.T3.ratings.pdf"),
   plot = p.T3.ratings
 )
+ggsave(
+  file.path(final.figdir, "p.T3.ratings.pdf"),
+  plot = p.T3.ratings
+)
 
 #--------------------------------------------------------------------------------
 # Liking Ratings By Subject
@@ -505,6 +530,12 @@ plot(p.T3.ratingsBySubject)
 
 ggsave(
   file.path(figdir, "p.T3.ratingsBySubject.pdf"),
+  plot = p.T3.ratingsBySubject,
+  width = plot_width,
+  height = plot_height *.33
+)
+ggsave(
+  file.path(final.figdir, "p.T3.ratingsBySubject.pdf"),
   plot = p.T3.ratingsBySubject,
   width = plot_width,
   height = plot_height *.33

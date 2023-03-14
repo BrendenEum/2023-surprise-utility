@@ -23,10 +23,15 @@ rm(list = ls())
 seed = 1337
 library(dplyr)      #pipeline %>%
 
-datadir <- '../data' #data
-figdir <- '../00_pilot/figures' #figures
-outdir <- '../00_pilot/output' #output
-tempdir <- '../00_pilot/temp' #temp folder
+rawdatadir <- '../data' # raw data
+datadir <- '../00 pilot/clean_data' # clean data
+figdir <- '../00 pilot/figures' # figure folder
+tbldir <- '../00 pilot/tables' # figure folder
+tempdir <- '../00 pilot/temp' # temp folder
+textdir <- "../00 pilot/text" # text folder
+final.figdir <- "../surprise-utility-manuscript/figures"
+final.txtdir <- "../surprise-utility-manuscript/text-files"
+final.tbldir <- "../surprise-utility-manuscript/tables"
 
 ```
 
@@ -64,7 +69,7 @@ variables_of_interest <- c(
 )
 
 data.raw <- read.csv(
-  file = file.path(datadir, "pilotdata_exp_106287-v23_task-s39a.csv")
+  file = file.path(rawdatadir, "pilotdata_exp_106287-v23_task-s39a.csv")
 )
 
 data.main <- data.raw[data.raw$Participant.Status=="complete", variables_of_interest]
@@ -197,7 +202,7 @@ for (row in c(1:nrow(data.main))) {
 
 write.csv(
   data.main, 
-  file.path(outdir, "data.main.csv")
+  file.path(datadir, "data.main.csv")
 )
 
 ```
@@ -263,7 +268,7 @@ data.T1 <- data.T1 %>%
 
 write.csv(
   data.T1, 
-  file.path(outdir, "data.T1.csv")
+  file.path(datadir, "data.T1.csv")
 )
 
 ```
@@ -317,7 +322,7 @@ data.T2[data.T2$response=="right", "T2.chosenFractal"] <- data.T2[data.T2$respon
 
 write.csv(
   data.T2, 
-  file.path(outdir, "data.T2.csv")
+  file.path(datadir, "data.T2.csv")
 )
 
 ```
@@ -372,7 +377,7 @@ data.T3 <- data.T3 %>%
 
 write.csv(
   data.T3, 
-  file.path(outdir, "data.T3.csv")
+  file.path(datadir, "data.T3.csv")
 )
 
 ```

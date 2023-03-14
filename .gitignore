@@ -1,0 +1,27 @@
+Rplots.pdf
+.Rproj.user
+*.Rproj
+*.Rhistory
+*.RData
+.Ruserdata
+*.mat
+*.csv
+*.bat
+
+00 pilot/
+01 exploratory/
+02 confirmatory/
+03 joint/
+BE_writeups/
+data/
+literature/
+OLD/
+online-task/
+task/
+output/
+presentations/
+recruiting/
+temp/
+
+test*
+*.asc
